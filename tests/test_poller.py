@@ -1,45 +1,60 @@
-import asyncio
+from datetime import datetime, timezone
 
 import pytest
 
+from release_manager.application.ports import ManifestFetcher
 from release_manager.config import Settings
-from release_manager.database import Database
 from release_manager.github import GitHubEnvFile
+from release_manager.models import EnvironmentState
 from release_manager.poller import EnvironmentPoller
 
 
-class FakeGitHubClient:
+class FakeManifestFetcher(ManifestFetcher):
     def __init__(self, env_file: GitHubEnvFile):
-        self._env_file = env_file
-        self.calls = 0
+        self.env_file = env_file
 
-    @property
-    def env_file(self) -> GitHubEnvFile:
-        return self._env_file
-
-    @env_file.setter
-    def env_file(self, value: GitHubEnvFile) -> None:
-        self._env_file = value
-
-    async def fetch_env_file(self, path: str) -> GitHubEnvFile:
-        self.calls += 1
-        return self._env_file
+    async def fetch(self, path: str) -> GitHubEnvFile:
+        return self.env_file
 
 
-class FakeDeploymentEngine:
-    def __init__(self):
+class FakeEnvironmentService:
+    def __init__(self, initial_commit: str | None = None):
+        self._commit = initial_commit
+
+    def set_commit(self, commit: str) -> None:
+        self._commit = commit
+
+    def get_environment(self, environment: str):
+        if environment != "preprod" or self._commit is None:
+            return None
+        return EnvironmentState(
+            commit_sha=self._commit,
+            deployed_at=datetime.now(timezone.utc),
+            services={},
+        )
+
+    def get_all_environments(self):
+        state = self.get_environment("preprod")
+        return {"preprod": state} if state else {}
+
+    def diff_environments(self):
+        return []
+
+
+class FakeDeploymentService:
+    def __init__(self, environment_service: FakeEnvironmentService):
         self.calls: list[tuple[str, dict[str, str]]] = []
+        self._environment_service = environment_service
 
-    async def deploy_preprod(self, commit_sha: str, services: dict[str, str], *, deployed_by: str = "system") -> None:
+    async def deploy_preprod(
+        self, *, commit_sha: str, services: dict[str, str], deployed_by: str = "system"
+    ):  # pragma: no cover - simple fake
         self.calls.append((commit_sha, services))
+        self._environment_service.set_commit(commit_sha)
 
 
 @pytest.mark.asyncio
 async def test_poller_triggers_and_tracks_latest_commit(tmp_path):
-    db_path = tmp_path / "poller.db"
-    database = Database(db_path)
-    database.initialize_schema()
-
     settings = Settings(
         environment_name="test",
         stub_mode=False,
@@ -48,7 +63,7 @@ async def test_poller_triggers_and_tracks_latest_commit(tmp_path):
         github_token=None,
         poll_interval_seconds=0,
         docker_host=None,
-        database_path=db_path,
+        database_path=tmp_path / "poller.db",
         deployment_timeout_seconds=300,
         health_check_interval_seconds=5,
         web_host="0.0.0.0",
@@ -60,29 +75,30 @@ async def test_poller_triggers_and_tracks_latest_commit(tmp_path):
         raw_text="SERVICE_VERSION=1",
         services={"service": "1"},
     )
-    github = FakeGitHubClient(initial_env)
-    engine = FakeDeploymentEngine()
+    environment_service = FakeEnvironmentService()
+    deployment_service = FakeDeploymentService(environment_service)
+    fetcher = FakeManifestFetcher(initial_env)
 
     poller = EnvironmentPoller(
         settings=settings,
-        database=database,
-        github_client=github,
-        deployment_engine=engine,
+        manifest_fetcher=fetcher,
+        deployment_service=deployment_service,
+        environment_service=environment_service,
     )
 
     # First change should deploy and store latest commit.
     await poller.check_for_changes()
-    assert engine.calls == [("sha-1", {"service": "1"})]
+    assert deployment_service.calls == [("sha-1", {"service": "1"})]
 
     # Same commit should no-op.
     await poller.check_for_changes()
-    assert engine.calls == [("sha-1", {"service": "1"})]
+    assert deployment_service.calls == [("sha-1", {"service": "1"})]
 
     # New commit triggers another deployment.
-    github.env_file = GitHubEnvFile(
+    fetcher.env_file = GitHubEnvFile(
         commit_sha="sha-2",
         raw_text="SERVICE_VERSION=2",
         services={"service": "2"},
     )
     await poller.check_for_changes()
-    assert engine.calls[-1] == ("sha-2", {"service": "2"})
+    assert deployment_service.calls[-1] == ("sha-2", {"service": "2"})

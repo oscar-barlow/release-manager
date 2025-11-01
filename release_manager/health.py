@@ -2,42 +2,36 @@
 
 from __future__ import annotations
 
-import asyncio
-from typing import Iterable, Optional
+from typing import Iterable
 
-from .database import Database
-from .docker_client import DockerService
-from .models import ServiceHealth
+from release_manager.application.ports import HealthProbe, ServiceHealthRepository
+from release_manager.models import ServiceHealth
 
 
 class HealthService:
-    """Coordinates health checks using the Docker client and persists the results."""
+    """Coordinates health checks using configured ports."""
 
-    def __init__(self, database: Database, docker_client: DockerService):
-        self._db = database
-        self._docker = docker_client
+    def __init__(self, repository: ServiceHealthRepository, probe: HealthProbe):
+        self._repository = repository
+        self._probe = probe
 
     async def refresh_environment(
-        self, environment: str, services: Optional[Iterable[str]] = None
+        self, environment: str, services: Iterable[str]
     ) -> list[ServiceHealth]:
-        """Refresh health information for the requested services."""
-        env_state = self._db.get_environment_state(environment)
-        if not env_state:
+        """Refresh health information for the provided services."""
+        target_services = list(services)
+        if not target_services:
             return []
-        target_services = list(services) if services else sorted(env_state.services.keys())
-        results: list[ServiceHealth] = []
-        for service in target_services:
-            health = await asyncio.to_thread(
-                self._docker.get_service_health, environment=environment, service_name=service
-            )
-            self._db.update_service_health(health)
-            results.append(health)
+        results = await self._probe.probe(environment=environment, services=target_services)
+        for entry in results:
+            self._repository.store(entry)
         return results
 
     def health_snapshot(self) -> dict[str, dict[str, ServiceHealth]]:
         """Return the latest health information grouped by environment."""
-        snapshot: dict[str, dict[str, ServiceHealth]] = {"prod": {}, "preprod": {}}
-        for env in snapshot.keys():
-            for entry in self._db.list_service_health(env):
-                snapshot[env][entry.service_name] = entry
+        snapshot: dict[str, dict[str, ServiceHealth]] = {}
+        for entry in self._repository.list():
+            snapshot.setdefault(entry.environment, {})[entry.service_name] = entry
+        snapshot.setdefault("prod", {})
+        snapshot.setdefault("preprod", {})
         return snapshot

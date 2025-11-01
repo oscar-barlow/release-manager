@@ -9,14 +9,23 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from .config import Settings, get_settings
-from .database import Database
-from .deployer import DeploymentEngine
-from .docker_client import DockerService, EnvironmentDockerService, StubbedDockerService
-from .github import GitHubClient
-from .health import HealthService
-from .poller import EnvironmentPoller
-from .routers import api, pages, ui
+from release_manager.adapters.docker import DockerContainerOrchestrator, DockerHealthProbe
+from release_manager.adapters.github_adapter import GitHubManifestFetcher
+from release_manager.adapters.persistence import (
+    DatabaseDeploymentHistoryRepository,
+    DatabaseEnvironmentRepository,
+    DatabaseServiceHealthRepository,
+)
+from release_manager.adapters.time import SystemClock
+from release_manager.application.services.deployment_service import DeploymentService
+from release_manager.application.services.environment_service import EnvironmentService
+from release_manager.config import Settings, get_settings
+from release_manager.database import Database
+from release_manager.docker_client import DockerService, EnvironmentDockerService, StubbedDockerService
+from release_manager.github import GitHubClient
+from release_manager.health import HealthService
+from release_manager.poller import EnvironmentPoller
+from release_manager.routers import api, pages, ui
 
 logger = logging.getLogger(__name__)
 
@@ -34,25 +43,43 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         docker_client = StubbedDockerService(environment_name=settings.environment_name)
     else:
         docker_client = EnvironmentDockerService(base_url=settings.docker_host)
-    health_service = HealthService(database, docker_client)
-    github_client = GitHubClient(repo=settings.github_repo, token=settings.github_token)
-    deployment_engine = DeploymentEngine(
-        database=database,
-        docker_client=docker_client,
+
+    environment_repository = DatabaseEnvironmentRepository(database)
+    history_repository = DatabaseDeploymentHistoryRepository(database)
+    health_repository = DatabaseServiceHealthRepository(database)
+
+    orchestrator = DockerContainerOrchestrator(docker_client)
+    health_probe = DockerHealthProbe(docker_client)
+    clock = SystemClock()
+
+    health_service = HealthService(health_repository, health_probe)
+    environment_service = EnvironmentService(environment_repository)
+    deployment_service = DeploymentService(
+        environment_repo=environment_repository,
+        history_repo=history_repository,
+        orchestrator=orchestrator,
         health_service=health_service,
-        settings=settings,
+        clock=clock,
+        logger=logger,
     )
+    github_client = GitHubClient(repo=settings.github_repo, token=settings.github_token)
+    manifest_fetcher = GitHubManifestFetcher(github_client)
     poller = EnvironmentPoller(
         settings=settings,
-        database=database,
-        github_client=github_client,
-        deployment_engine=deployment_engine,
+        manifest_fetcher=manifest_fetcher,
+        deployment_service=deployment_service,
+        environment_service=environment_service,
     )
 
     app.state.settings = settings
     app.state.database = database
-    app.state.deployment_engine = deployment_engine
+    app.state.environment_repository = environment_repository
+    app.state.history_repository = history_repository
+    app.state.service_health_repository = health_repository
+    app.state.environment_service = environment_service
+    app.state.deployment_service = deployment_service
     app.state.health_service = health_service
+    app.state.docker_client = docker_client
     app.state.github_client = github_client
     app.state.poller = poller
 
