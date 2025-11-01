@@ -10,31 +10,48 @@
 </head>
 <body>
     <header class="app-header">
-        <h1>Release Manager</h1>
-        <nav x-data="{ active: 'dashboard' }">
-            <button 
-                :class="{ active: active === 'dashboard' }"
-                @click="active = 'dashboard'"
+        <div class="app-header__brand">
+            <h1>Release Manager</h1>
+            <p>Swarm-ready deployments for home.services</p>
+        </div>
+        <nav id="app-nav">
+            <button
+                class="active"
+                data-nav-link
+                data-tab="dashboard"
                 hx-get="/ui/dashboard"
                 hx-target="#content"
-                hx-push-url="true">
+                hx-push-url="true"
+                type="button"
+                aria-current="page">
                 Dashboard
             </button>
             <button
-                :class="{ active: active === 'history' }"
-                @click="active = 'history'"
+                data-nav-link
+                data-tab="history"
                 hx-get="/ui/history"
                 hx-target="#content"
-                hx-push-url="true">
+                hx-push-url="true"
+                type="button">
                 History
             </button>
             <button
-                :class="{ active: active === 'health' }"
-                @click="active = 'health'"
+                data-nav-link
+                data-tab="health"
                 hx-get="/ui/health"
                 hx-target="#content"
-                hx-push-url="true">
+                hx-push-url="true"
+                type="button">
                 Health
+            </button>
+            <button
+                data-nav-link
+                data-tab="directory"
+                hx-get="/ui/directory"
+                hx-target="#content"
+                hx-push-url="true"
+                type="button">
+                Directory
             </button>
         </nav>
     </header>

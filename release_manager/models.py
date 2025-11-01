@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 ChangeType = Literal["version_bump", "no_change", "new_service", "removed_service"]
 DeploymentStatusType = Literal["pending", "in_progress", "success", "failed", "rolled_back"]
 HealthStatusType = Literal["healthy", "unhealthy", "unknown"]
+DockerServiceStatusType = Literal["healthy", "degraded", "stopped", "unknown"]
 
 
 class Deployment(BaseModel):
@@ -44,7 +45,7 @@ class ServiceHealth(BaseModel):
     """Health status of a service in a particular environment."""
 
     id: Optional[int] = None
-    environment: Literal["prod", "preprod"]
+    environment: str
     service_name: str
     status: HealthStatusType
     replicas_running: Optional[int] = None
@@ -97,3 +98,18 @@ class DeploymentDiff(BaseModel):
 
     changes: list[ServiceDiff]
     commit_range: Optional[dict[str, str]] = None
+
+
+class DockerServiceSummary(BaseModel):
+    """Metadata for a running Docker service."""
+
+    environment: str
+    service_name: str
+    stack_service: str
+    image: Optional[str] = None
+    replicas_desired: Optional[int] = None
+    replicas_running: Optional[int] = None
+    status: DockerServiceStatusType
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    message: Optional[str] = None

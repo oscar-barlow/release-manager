@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
@@ -17,15 +17,15 @@ templates = Jinja2Templates(directory="templates")
 
 
 def get_engine(request: Request) -> DeploymentEngine:
-    return request.app.state.deployment_engine
+    return cast(DeploymentEngine, request.app.state.deployment_engine)
 
 
 def get_database(request: Request) -> Database:
-    return request.app.state.database
+    return cast(Database, request.app.state.database)
 
 
 def get_health(request: Request) -> HealthService:
-    return request.app.state.health_service
+    return cast(HealthService, request.app.state.health_service)
 
 
 @router.get("/dashboard", response_class=HTMLResponse)
@@ -77,26 +77,35 @@ async def trigger_deploy_prod(
 ) -> HTMLResponse:
     payload: dict[str, Any] = {}
     try:
-        payload = await request.json()
+        json_body = await request.json()
+        if isinstance(json_body, dict):
+            payload = json_body
     except Exception:
         form = await request.form()
-        services = form.getlist("services")
+        services_form = [item for item in form.getlist("services") if isinstance(item, str)]
         payload = {
             "confirm": form.get("confirm", "true"),
-            "services": services,
+            "services": services_form,
         }
 
     confirm = str(payload.get("confirm", True)).lower() in {"true", "1", "yes", "on"}
-    services = payload.get("services")
-    if isinstance(services, str):
-        services = [services]
+    services_raw = payload.get("services")
+    services: Optional[list[str]]
+    if services_raw is None:
+        services = None
+    elif isinstance(services_raw, str):
+        services = [services_raw]
+    elif isinstance(services_raw, list):
+        services = [item for item in services_raw if isinstance(item, str)]
+    else:
+        services = None
     if not confirm:
         raise HTTPException(status_code=400, detail="Confirmation required")
     preprod_state = database.get_environment_state("preprod")
     if not preprod_state:
         raise HTTPException(status_code=409, detail="Preprod environment not initialised")
     if services is not None and len(services) == 0:
-        context = {
+        context: dict[str, Any] = {
             "request": request,
             "status": None,
             "error": "Select at least one service to deploy.",
@@ -107,8 +116,8 @@ async def trigger_deploy_prod(
         commit_sha=preprod_state.commit_sha,
         subset=services,
     )
-    context = {"request": request, "status": result}
-    return templates.TemplateResponse("partials/deploy-status.html", context)
+    response_context: dict[str, Any] = {"request": request, "status": result}
+    return templates.TemplateResponse("partials/deploy-status.html", response_context)
 
 
 @router.get("/deploy/status/{deployment_id}", response_class=HTMLResponse)
@@ -153,3 +162,13 @@ async def health(
 ) -> HTMLResponse:
     context = {"request": request, "health": health_service.health_snapshot()}
     return templates.TemplateResponse("partials/health.html", context)
+
+
+@router.get("/directory", response_class=HTMLResponse)
+async def directory(
+    request: Request,
+    engine: DeploymentEngine = Depends(get_engine),
+) -> HTMLResponse:
+    services = await engine.list_services()
+    context = {"request": request, "services": services}
+    return templates.TemplateResponse("partials/directory.html", context)

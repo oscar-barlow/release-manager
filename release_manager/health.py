@@ -6,14 +6,14 @@ import asyncio
 from typing import Iterable, Optional
 
 from .database import Database
-from .docker_client import DockerServiceClient
+from .docker_client import DockerService
 from .models import ServiceHealth
 
 
 class HealthService:
     """Coordinates health checks using the Docker client and persists the results."""
 
-    def __init__(self, database: Database, docker_client: DockerServiceClient):
+    def __init__(self, database: Database, docker_client: DockerService):
         self._db = database
         self._docker = docker_client
 

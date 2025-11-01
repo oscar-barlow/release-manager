@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,7 +11,7 @@ from fastapi import FastAPI
 from .config import Settings, get_settings
 from .database import Database
 from .deployer import DeploymentEngine
-from .docker_client import DockerServiceClient
+from .docker_client import DockerService, EnvironmentDockerService, StubbedDockerService
 from .github import GitHubClient
 from .health import HealthService
 from .poller import EnvironmentPoller
@@ -20,14 +21,18 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings: Settings = get_settings()
     database = Database(settings.database_path)
     database.initialize_schema()
 
-    docker_client = DockerServiceClient(
-        base_url=settings.docker_host, stub_mode=settings.stub_mode
-    )
+    env_name = settings.environment_name
+    use_stub = settings.stub_mode and (env_name.startswith("dev") or env_name.startswith("test"))
+    docker_client: DockerService
+    if use_stub:
+        docker_client = StubbedDockerService(environment_name=settings.environment_name)
+    else:
+        docker_client = EnvironmentDockerService(base_url=settings.docker_host)
     health_service = HealthService(database, docker_client)
     github_client = GitHubClient(repo=settings.github_repo, token=settings.github_token)
     deployment_engine = DeploymentEngine(

@@ -10,6 +10,7 @@ from typing import Optional, Sequence
 
 from .migrations import upgrade_database
 from .models import (
+    ChangeType,
     Deployment,
     DeploymentHistory,
     DeploymentStatusType,
@@ -105,7 +106,8 @@ class Database:
                 deployed_by=excluded.deployed_by
         """
         cursor = self._execute(query, params)
-        return cursor.lastrowid
+        last_row_id = cursor.lastrowid
+        return int(last_row_id) if last_row_id is not None else -1
 
     def list_deployments(self, environment: Optional[str] = None) -> list[Deployment]:
         """Return deployments (optionally filtered by environment)."""
@@ -122,7 +124,7 @@ class Database:
                 service_name=row["service_name"],
                 version=row["version"],
                 commit_sha=row["commit_sha"],
-                deployed_at=_from_iso(row["deployed_at"]),
+                deployed_at=_from_iso(row["deployed_at"]) or _utcnow(),
                 deployed_by=row["deployed_by"],
             )
             for row in rows
@@ -182,7 +184,8 @@ class Database:
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """
         cursor = self._execute(query, params)
-        return cursor.lastrowid
+        last_row_id = cursor.lastrowid
+        return int(last_row_id) if last_row_id is not None else -1
 
     def finalize_history_record(
         self,
@@ -223,7 +226,7 @@ class Database:
             status=row["status"],
             deployed_by=row["deployed_by"],
             error_message=row["error_message"],
-            started_at=_from_iso(row["started_at"]),
+            started_at=_from_iso(row["started_at"]) or _utcnow(),
             completed_at=_from_iso(row["completed_at"]),
             duration_seconds=row["duration_seconds"],
         )
@@ -268,7 +271,7 @@ class Database:
                 status=row["status"],
                 deployed_by=row["deployed_by"],
                 error_message=row["error_message"],
-                started_at=_from_iso(row["started_at"]),
+                started_at=_from_iso(row["started_at"]) or _utcnow(),
                 completed_at=_from_iso(row["completed_at"]),
                 duration_seconds=row["duration_seconds"],
             )
@@ -298,7 +301,7 @@ class Database:
                 status=row["status"],
                 deployed_by=row["deployed_by"],
                 error_message=row["error_message"],
-                started_at=_from_iso(row["started_at"]),
+                started_at=_from_iso(row["started_at"]) or _utcnow(),
                 completed_at=_from_iso(row["completed_at"]),
                 duration_seconds=row["duration_seconds"],
             )
@@ -331,7 +334,8 @@ class Database:
                 error_message=excluded.error_message
         """
         cursor = self._execute(query, params)
-        return cursor.lastrowid
+        last_row_id = cursor.lastrowid
+        return int(last_row_id) if last_row_id is not None else -1
 
     def list_service_health(self, environment: Optional[str] = None) -> list[ServiceHealth]:
         """Return service health entries."""
@@ -349,7 +353,7 @@ class Database:
                 status=row["status"],
                 replicas_running=row["replicas_running"],
                 replicas_desired=row["replicas_desired"],
-                last_checked=_from_iso(row["last_checked"]),
+                last_checked=_from_iso(row["last_checked"]) or _utcnow(),
                 error_message=row["error_message"],
             )
             for row in rows
@@ -362,7 +366,7 @@ class Database:
         differences: list[ServiceDiff] = []
         if not preprod and not prod:
             return differences
-        services = set()
+        services: set[str] = set()
         if preprod:
             services.update(preprod.services.keys())
         if prod:
@@ -372,7 +376,7 @@ class Database:
             preprod_version = preprod.services.get(service) if preprod else None
             if prod_version and preprod_version:
                 if prod_version == preprod_version:
-                    change_type = "no_change"
+                    change_type: ChangeType = "no_change"
                 else:
                     change_type = "version_bump"
             elif preprod_version and not prod_version:

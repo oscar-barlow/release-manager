@@ -6,13 +6,19 @@ import asyncio
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Iterable, Optional
+from typing import Iterable, Optional, cast, Literal
 
 from .config import Settings
 from .database import Database
-from .docker_client import DockerServiceClient
+from .docker_client import DockerService
 from .health import HealthService
-from .models import DeploymentStatus, EnvironmentState, ServiceDiff
+from .models import (
+    DeploymentStatus,
+    DeploymentStatusType,
+    DockerServiceSummary,
+    EnvironmentState,
+    ServiceDiff,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +29,7 @@ class DeploymentResult:
 
     deployment_id: int
     environment: str
-    status: str
+    status: DeploymentStatusType
     started_at: datetime
     completed_at: Optional[datetime]
     duration_seconds: Optional[float]
@@ -38,7 +44,7 @@ class DeploymentEngine:
         self,
         *,
         database: Database,
-        docker_client: DockerServiceClient,
+        docker_client: DockerService,
         health_service: HealthService,
         settings: Settings,
     ):
@@ -106,10 +112,11 @@ class DeploymentEngine:
                     deployed_by=deployed_by,
                     subset=subset,
                 )
+                env_literal = cast(Literal["prod", "preprod"], environment)
                 return DeploymentStatus(
                     deployment_id=result.deployment_id,
-                    environment=environment,  # type: ignore[arg-type]
-                    status=result.status,  # type: ignore[arg-type]
+                    environment=env_literal,
+                    status=result.status,
                     started_at=result.started_at,
                     completed_at=result.completed_at,
                     duration_seconds=result.duration_seconds,
@@ -145,7 +152,7 @@ class DeploymentEngine:
 
         stack_versions = {service: target_versions[service] for service in services_to_deploy}
         error_message: Optional[str] = None
-        status = "success"
+        status: DeploymentStatusType = "success"
         try:
             await asyncio.to_thread(
                 self._docker.deploy_stack, environment=environment, services=stack_versions
@@ -158,7 +165,7 @@ class DeploymentEngine:
         completion_time = datetime.now(timezone.utc)
         duration = (completion_time - started_at).total_seconds()
 
-        services_payload = []
+        services_payload: list[dict[str, str]] = []
         if status == "success":
             for service in services_to_deploy:
                 history_id = history_ids[service]
@@ -248,7 +255,7 @@ class DeploymentEngine:
         group = self._db.list_history_for_started_at(
             environment=record.environment, started_at=record.started_at
         )
-        status = "success"
+        status: DeploymentStatusType = "success"
         error_message = None
         completed_at = record.completed_at
         for entry in group:
@@ -271,13 +278,18 @@ class DeploymentEngine:
         duration_seconds = (
             (completed_at - record.started_at).total_seconds() if completed_at else None
         )
+        env_literal = cast(Literal["prod", "preprod"], record.environment)
         return DeploymentStatus(
             deployment_id=deployment_id,
-            environment=record.environment,  # type: ignore[arg-type]
-            status=status,  # type: ignore[arg-type]
+            environment=env_literal,
+            status=status,
             started_at=record.started_at,
             completed_at=completed_at,
             duration_seconds=duration_seconds,
             services_deployed=services_payload,
             error_message=error_message,
         )
+
+    async def list_services(self) -> dict[str, list[DockerServiceSummary]]:
+        """Return a snapshot of running Docker services grouped by environment."""
+        return await asyncio.to_thread(self._docker.list_services_by_environment)

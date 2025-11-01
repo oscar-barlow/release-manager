@@ -1,0 +1,80 @@
+<section class="directory-view">
+    {% if services %}
+        {% for env, env_services in services|dictsort %}
+            <article class="directory-card">
+                <header class="directory-card__header">
+                    <div>
+                        <h2>{{ env|capitalize }} Services</h2>
+                        <p class="meta">
+                            {{ env_services|length }} running service{{ '' if env_services|length == 1 else 's' }}
+                        </p>
+                    </div>
+                    <div class="directory-card__status">
+                        {% set healthy = env_services|selectattr('status', 'equalto', 'healthy')|list|length %}
+                        {% set degraded = env_services|selectattr('status', 'equalto', 'degraded')|list|length %}
+                        {% set stopped = env_services|selectattr('status', 'equalto', 'stopped')|list|length %}
+                        <span class="badge badge--healthy">{{ healthy }} healthy</span>
+                        <span class="badge badge--degraded">{{ degraded }} degraded</span>
+                        <span class="badge badge--stopped">{{ stopped }} stopped</span>
+                    </div>
+                </header>
+                <div class="table-wrapper">
+                    <table class="directory-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Service</th>
+                                <th scope="col">Image</th>
+                                <th scope="col">Replicas</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for service in env_services %}
+                                <tr>
+                                    <td data-label="Service">
+                                        <span class="service-name">{{ service.service_name }}</span>
+                                        <span class="service-stack">({{ service.stack_service }})</span>
+                                    </td>
+                                    <td data-label="Image">
+                                        {% if service.image %}
+                                            <code class="mono">{{ service.image }}</code>
+                                        {% else %}
+                                            <span class="muted">unknown</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Replicas">
+                                        {% if service.replicas_desired is not none %}
+                                            {{ service.replicas_running or 0 }} / {{ service.replicas_desired }}
+                                        {% else %}
+                                            <span class="muted">n/a</span>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Status">
+                                        <span class="status-pill status-pill--{{ service.status }}">{{ service.status }}</span>
+                                        {% if service.message %}
+                                            <div class="status-message">{{ service.message }}</div>
+                                        {% endif %}
+                                    </td>
+                                    <td data-label="Updated">
+                                        {% if service.updated_at %}
+                                            {{ service.updated_at.astimezone().strftime("%Y-%m-%d %H:%M:%S") }}
+                                        {% elif service.created_at %}
+                                            {{ service.created_at.astimezone().strftime("%Y-%m-%d %H:%M:%S") }}
+                                        {% else %}
+                                            <span class="muted">unknown</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>No running services detected. When deployments land, they will appear here with live status.</p>
+        </div>
+    {% endif %}
+</section>

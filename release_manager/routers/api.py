@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
@@ -15,15 +15,15 @@ router = APIRouter(prefix="/api", tags=["api"])
 
 
 def get_engine(request: Request) -> DeploymentEngine:
-    return request.app.state.deployment_engine
+    return cast(DeploymentEngine, request.app.state.deployment_engine)
 
 
 def get_database(request: Request) -> Database:
-    return request.app.state.database
+    return cast(Database, request.app.state.database)
 
 
 def get_health_service(request: Request) -> HealthService:
-    return request.app.state.health_service
+    return cast(HealthService, request.app.state.health_service)
 
 
 @router.get("/environments")
@@ -40,8 +40,10 @@ def get_diff(
 ) -> dict[str, Any]:
     diff = engine.diff_environments()
     states = engine.get_environment_states()
-    prod_commit = states.get("prod").commit_sha if "prod" in states else None
-    preprod_commit = states.get("preprod").commit_sha if "preprod" in states else None
+    prod_state = states.get("prod")
+    preprod_state = states.get("preprod")
+    prod_commit = prod_state.commit_sha if prod_state else None
+    preprod_commit = preprod_state.commit_sha if preprod_state else None
     return {
         "changes": [item.model_dump() for item in diff],
         "commit_range": {"from": prod_commit, "to": preprod_commit},
