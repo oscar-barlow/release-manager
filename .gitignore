@@ -4,9 +4,13 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .uv-cache/
+.secrets/
 data/release-manager.db
 data/release-manager.db.backup
 data/release-manager-*.db
 dist/
 build/
 *.egg-info/
+.env.dev
+.env.prod
+.env.preprod

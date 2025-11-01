@@ -18,6 +18,7 @@ class Settings:
     environment_name: str
     stub_mode: bool
     github_repo: str
+    github_token_file: Optional[Path]
     github_token: Optional[str]
     poll_interval_seconds: int
     docker_host: Optional[str]
@@ -51,6 +52,19 @@ class Settings:
         if not github_repo:
             raise ValueError("GITHUB_REPO environment variable must be set")
 
+        github_token = os.environ.get("GITHUB_TOKEN")
+        github_token_file_raw = os.environ.get("GITHUB_TOKEN_FILE")
+        github_token_file: Optional[Path] = None
+        if github_token_file_raw:
+            candidate = Path(github_token_file_raw).expanduser()
+            if candidate.is_file():
+                github_token = candidate.read_text(encoding="utf-8").strip()
+                github_token_file = candidate
+            else:
+                raise FileNotFoundError(
+                    f"GITHUB_TOKEN_FILE path {candidate} does not exist or is not a file"
+                )
+
         database_path = _resolve_database_path(
             os.environ.get("DATABASE_PATH", "./data/release-manager.db"),
             environment_name,
@@ -61,7 +75,8 @@ class Settings:
             environment_name=environment_name,
             stub_mode=stub_mode,
             github_repo=github_repo,
-            github_token=os.environ.get("GITHUB_TOKEN"),
+            github_token_file=github_token_file,
+            github_token=github_token,
             poll_interval_seconds=int(os.environ.get("POLL_INTERVAL_SECONDS", "60")),
             docker_host=os.environ.get("DOCKER_HOST"),
             database_path=database_path,

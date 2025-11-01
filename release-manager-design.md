@@ -398,7 +398,7 @@ Create `.env` file for local development:
 ```bash
 # GitHub Configuration
 GITHUB_REPO=user/homelab
-GITHUB_TOKEN=ghp_your_token_here
+GITHUB_TOKEN_FILE=./.secrets/github_token
 
 # Polling Configuration
 POLL_INTERVAL_SECONDS=60
@@ -1116,7 +1116,7 @@ Single-page application using HTMX for dynamic updates and Alpine.js for client-
 ```bash
 # GitHub Configuration
 GITHUB_REPO=user/homelab
-GITHUB_TOKEN=ghp_...           # Optional, for private repos
+GITHUB_TOKEN_FILE=/run/secrets/github_token
 
 # Polling Configuration
 POLL_INTERVAL_SECONDS=60

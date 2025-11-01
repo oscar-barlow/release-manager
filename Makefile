@@ -6,6 +6,13 @@ ENVIRONMENT_NAME ?= dev
 DATABASE_DIR := data
 DATABASE_FILE := $(DATABASE_DIR)/release-manager-$(ENVIRONMENT_NAME).db
 
+GITHUB_TOKEN_SECRET := $(CURDIR)/.secrets/github_token
+ifneq (,$(wildcard $(GITHUB_TOKEN_SECRET)))
+DOCKER_SECRET_FLAGS := -v $(GITHUB_TOKEN_SECRET):/run/secrets/github_token:ro -e GITHUB_TOKEN_FILE=/run/secrets/github_token
+else
+DOCKER_SECRET_FLAGS :=
+endif
+
 help:
 	@echo "Available targets:"
 	@echo "  dev          - Run development server with auto-reload"
@@ -70,6 +77,11 @@ docker-build:
 
 docker-run:
 	@echo "🐳 Running Docker container..."
+	@if [ -f "$(GITHUB_TOKEN_SECRET)" ]; then \
+		SECRET_FLAGS="$(DOCKER_SECRET_FLAGS)"; \
+	else \
+		SECRET_FLAGS=""; \
+	fi; \
 	docker run -d \
 		-p 8080:8080 \
 		-v /var/run/docker.sock:/var/run/docker.sock:ro \
@@ -77,6 +89,7 @@ docker-run:
 		-e ENVIRONMENT_NAME=$(ENVIRONMENT_NAME) \
 		-e GITHUB_REPO=oscar-barlow/home.services \
 		-e DATABASE_PATH=/data/release-manager-$(ENVIRONMENT_NAME).db \
+		$$SECRET_FLAGS \
 		--name release-manager \
 		release-manager:latest
 

@@ -41,6 +41,7 @@ async def test_deploy_prod(tmp_path):
         environment_name="test",
         stub_mode=False,
         github_repo="user/repo",
+        github_token_file=None,
         github_token=None,
         poll_interval_seconds=0,
         docker_host=None,
