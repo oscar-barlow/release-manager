@@ -75,17 +75,33 @@ async def trigger_deploy_prod(
     engine: DeploymentEngine = Depends(get_engine),
     database: Database = Depends(get_database),
 ) -> HTMLResponse:
+    payload: dict[str, Any] = {}
     try:
         payload = await request.json()
     except Exception:
-        payload = {}
-    confirm = payload.get("confirm", True)
+        form = await request.form()
+        services = form.getlist("services")
+        payload = {
+            "confirm": form.get("confirm", "true"),
+            "services": services,
+        }
+
+    confirm = str(payload.get("confirm", True)).lower() in {"true", "1", "yes", "on"}
     services = payload.get("services")
+    if isinstance(services, str):
+        services = [services]
     if not confirm:
         raise HTTPException(status_code=400, detail="Confirmation required")
     preprod_state = database.get_environment_state("preprod")
     if not preprod_state:
         raise HTTPException(status_code=409, detail="Preprod environment not initialised")
+    if services is not None and len(services) == 0:
+        context = {
+            "request": request,
+            "status": None,
+            "error": "Select at least one service to deploy.",
+        }
+        return templates.TemplateResponse("partials/deploy-status.html", context)
     result = await engine.deploy_prod(
         services=preprod_state.services,
         commit_sha=preprod_state.commit_sha,

@@ -26,6 +26,10 @@
         {% endfor %}
     </ul>
 </div>
+{% elif error %}
+<div class="deployment-status deployment-error">
+    <p class="error-message">{{ error }}</p>
+</div>
 {% else %}
 <div class="empty-state">
     <p>No deployment information available.</p>

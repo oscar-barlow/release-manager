@@ -131,12 +131,9 @@ class DeploymentEngine:
         services_to_deploy = self._select_services(target_versions, subset)
         started_at = datetime.now(timezone.utc)
         history_ids: dict[str, int] = {}
-        error_message: Optional[str] = None
-        status = "success"
-
         for service in services_to_deploy:
             version = target_versions[service]
-            history_id = self._db.create_history_record(
+            history_ids[service] = self._db.create_history_record(
                 environment=environment,
                 service_name=service,
                 version=version,
@@ -145,89 +142,80 @@ class DeploymentEngine:
                 started_at=started_at,
                 status="in_progress",
             )
-            history_ids[service] = history_id
-            try:
-                await asyncio.to_thread(
-                    self._docker.deploy_service,
-                    environment=environment,
-                    service_name=service,
-                    version=version,
-                )
-                completed_at = datetime.now(timezone.utc)
+
+        stack_versions = {service: target_versions[service] for service in services_to_deploy}
+        error_message: Optional[str] = None
+        status = "success"
+        try:
+            await asyncio.to_thread(
+                self._docker.deploy_stack, environment=environment, services=stack_versions
+            )
+        except Exception as exc:  # pragma: no cover - best effort logging
+            logger.exception("Stack deployment failed for %s", environment)
+            status = "failed"
+            error_message = str(exc)
+
+        completion_time = datetime.now(timezone.utc)
+        duration = (completion_time - started_at).total_seconds()
+
+        services_payload = []
+        if status == "success":
+            for service in services_to_deploy:
+                history_id = history_ids[service]
                 self._db.upsert_deployment(
                     environment=environment,
                     service_name=service,
-                    version=version,
+                    version=target_versions[service],
                     commit_sha=commit_sha,
-                    deployed_at=completed_at,
+                    deployed_at=completion_time,
                     deployed_by=deployed_by,
                 )
                 self._db.finalize_history_record(
                     history_id,
                     status="success",
-                    completed_at=completed_at,
-                    duration_seconds=(completed_at - started_at).total_seconds(),
+                    completed_at=completion_time,
+                    duration_seconds=duration,
                 )
-            except Exception as exc:  # pragma: no cover - best effort logging
-                logger.exception("Deployment failed for %s (%s)", service, environment)
-                error_message = str(exc)
-                status = "failed"
-                completed_at = datetime.now(timezone.utc)
-                self._db.finalize_history_record(
-                    history_id,
-                    status="failed",
-                    completed_at=completed_at,
-                    duration_seconds=(completed_at - started_at).total_seconds(),
-                    error_message=error_message,
-                )
-                break
-
-        health_results = await self._health.refresh_environment(
-            environment, services_to_deploy
-        )
-
-        if status == "failed":
-            # Mark remaining services as skipped for visibility.
-            skipped_services = set(services_to_deploy) - set(history_ids.keys())
-            for service in skipped_services:
-                history_id = self._db.create_history_record(
-                    environment=environment,
-                    service_name=service,
-                    version=target_versions[service],
-                    commit_sha=commit_sha,
-                    deployed_by=deployed_by,
-                    started_at=started_at,
-                    status="failed",
-                )
-                self._db.finalize_history_record(
-                    history_id,
-                    status="failed",
-                    completed_at=datetime.now(timezone.utc),
-                    error_message="Skipped due to earlier failure",
-                    duration_seconds=0.0,
-                )
-                history_ids[service] = history_id
-
-        services_payload = []
-        for service in services_to_deploy:
-            history_id = history_ids.get(service)
-            health = next((h for h in health_results if h.service_name == service), None)
-            services_payload.append(
-                {
-                    "history_id": str(history_id) if history_id else "",
-                    "name": service,
-                    "version": target_versions[service],
-                    "health_status": health.status if health else "unknown",
-                }
+            health_results = await self._health.refresh_environment(
+                environment, services_to_deploy
             )
+            for service in services_to_deploy:
+                history_id = history_ids[service]
+                health = next((h for h in health_results if h.service_name == service), None)
+                services_payload.append(
+                    {
+                        "history_id": str(history_id) if history_id else "",
+                        "name": service,
+                        "version": target_versions[service],
+                        "health_status": health.status if health else "unknown",
+                    }
+                )
+        else:
+            for service in services_to_deploy:
+                history_id = history_ids[service]
+                self._db.finalize_history_record(
+                    history_id,
+                    status="failed",
+                    completed_at=completion_time,
+                    duration_seconds=duration,
+                    error_message=error_message or "Stack deployment failed",
+                )
+                services_payload.append(
+                    {
+                        "history_id": str(history_id),
+                        "name": service,
+                        "version": target_versions[service],
+                        "status": "failed",
+                    }
+                )
+            health_results = []
 
         deployment_id = next(iter(history_ids.values())) if history_ids else -1
-        if status == "failed":
-            completed_at = datetime.now(timezone.utc)
-        elif health_results:
-            completed_at = max(health.last_checked for health in health_results)
-        else:
-            completed_at = datetime.now(timezone.utc)
+        completed_at = (
+            max((health.last_checked for health in health_results), default=completion_time)
+            if status == "success"
+            else completion_time
+        )
         duration_seconds = (completed_at - started_at).total_seconds()
         return DeploymentResult(
             deployment_id=deployment_id,

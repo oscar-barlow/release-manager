@@ -9,10 +9,10 @@ from release_manager.models import ServiceHealth
 
 class FakeDockerClient:
     def __init__(self):
-        self.deploy_calls: list[tuple[str, str, str]] = []
+        self.deploy_calls: list[tuple[str, dict[str, str]]] = []
 
-    def deploy_service(self, *, environment: str, service_name: str, version: str) -> None:
-        self.deploy_calls.append((environment, service_name, version))
+    def deploy_stack(self, *, environment: str, services: dict[str, str]) -> None:
+        self.deploy_calls.append((environment, services))
 
     def get_service_health(self, *, environment: str, service_name: str) -> ServiceHealth:
         return ServiceHealth(
@@ -64,7 +64,7 @@ async def test_deploy_prod(tmp_path):
     )
 
     assert result.status == "success"
-    assert docker.deploy_calls == [("prod", "jellyfin", "2025040900")]
+    assert docker.deploy_calls == [("prod", {"jellyfin": "2025040900"})]
     prod_state = db.get_environment_state("prod")
     assert prod_state is not None
     assert prod_state.services["jellyfin"] == "2025040900"

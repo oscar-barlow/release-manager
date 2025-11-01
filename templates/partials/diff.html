@@ -1,39 +1,48 @@
-<section class="diff-section">
+<section class="diff-section" x-data="{ confirming: false }">
     <header class="section-header">
         <h2>Environment Differences</h2>
     </header>
     {% if diff %}
-        <table class="diff-table">
-            <thead>
-                <tr>
-                    <th>Service</th>
-                    <th>Production</th>
-                    <th>Preprod</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in diff %}
-                    <tr class="{{ item.change_type }}">
-                        <td>{{ item.service }}</td>
-                        <td>{{ item.prod_version or "—" }}</td>
-                        <td>{{ item.preprod_version or "—" }}</td>
-                        <td>
-                            {% if item.change_type == "version_bump" %}
-                                <span class="badge version-bump">Version bump</span>
-                            {% elif item.change_type == "new_service" %}
-                                <span class="badge new-service">New service</span>
-                            {% elif item.change_type == "removed_service" %}
-                                <span class="badge removed-service">Removed</span>
-                            {% else %}
-                                <span class="badge">No change</span>
-                            {% endif %}
-                        </td>
+        <form id="deploy-form">
+            <input type="hidden" name="confirm" value="true">
+            <table class="diff-table">
+                <thead>
+                    <tr>
+                        <th>Deploy?</th>
+                        <th>Service</th>
+                        <th>Production</th>
+                        <th>Preprod</th>
+                        <th>Status</th>
                     </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <div class="deploy-actions" x-data="{ confirming: false }">
+                </thead>
+                <tbody>
+                    {% for item in diff %}
+                        <tr class="{{ item.change_type }}">
+                            <td>
+                                <label class="checkbox">
+                                    <input type="checkbox" name="services" value="{{ item.service }}" {% if item.change_type != 'no_change' %}checked{% endif %}>
+                                </label>
+                            </td>
+                            <td>{{ item.service }}</td>
+                            <td>{{ item.prod_version or "—" }}</td>
+                            <td>{{ item.preprod_version or "—" }}</td>
+                            <td>
+                                {% if item.change_type == "version_bump" %}
+                                    <span class="badge version-bump">Version bump</span>
+                                {% elif item.change_type == "new_service" %}
+                                    <span class="badge new-service">New service</span>
+                                {% elif item.change_type == "removed_service" %}
+                                    <span class="badge removed-service">Removed</span>
+                                {% else %}
+                                    <span class="badge">No change</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </form>
+        <div class="deploy-actions">
             <button
                 class="btn-primary"
                 x-show="!confirming"
@@ -41,12 +50,12 @@
                 Deploy to Production
             </button>
             <div class="confirm-dialog" x-show="confirming" x-cloak>
-                <p>Deploy these changes to production?</p>
+                <p>Deploy selected services to production?</p>
                 <button
                     class="btn-danger"
                     hx-post="/ui/deploy/prod"
                     hx-target="#deployment-status"
-                    hx-include="[name='services[]']"
+                    hx-include="#deploy-form"
                     @click="confirming = false">
                     Confirm deploy
                 </button>

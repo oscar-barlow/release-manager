@@ -1,0 +1,9 @@
+version: "3.8"
+
+services:
+{% for service, version in services.items() %}
+  {{ service }}:
+    image: {{ service }}:{{ version }}
+    deploy:
+      replicas: 1
+{% endfor %}
