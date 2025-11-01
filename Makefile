@@ -1,16 +1,31 @@
-.PHONY: dev test lint format db-init db-reset docker-build docker-run clean help
+.PHONY: dev test lint format db-init db-reset db-upgrade docker-build docker-run clean help
 
-UV_CACHE_DIR := ./.uv-cache
+ENV_FILE ?= .env
+
+ifneq (,$(wildcard $(ENV_FILE)))
+include $(ENV_FILE)
+export $(shell sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' $(ENV_FILE))
+endif
+
+UV_CACHE_DIR ?= ./.uv-cache
 UV := UV_CACHE_DIR=$(UV_CACHE_DIR) uv
 ENVIRONMENT_NAME ?= dev
+GITHUB_REPO ?= oscar-barlow/home.services
 DATABASE_DIR := data
 DATABASE_FILE := $(DATABASE_DIR)/release-manager-$(ENVIRONMENT_NAME).db
 
-GITHUB_TOKEN_SECRET := $(CURDIR)/.secrets/github_token
-ifneq (,$(wildcard $(GITHUB_TOKEN_SECRET)))
-DOCKER_SECRET_FLAGS := -v $(GITHUB_TOKEN_SECRET):/run/secrets/github_token:ro -e GITHUB_TOKEN_FILE=/run/secrets/github_token
+SECRET_SOURCE := $(if $(GITHUB_TOKEN_FILE),$(abspath $(GITHUB_TOKEN_FILE)),$(CURDIR)/.secrets/github_token)
+
+ifneq (,$(wildcard $(SECRET_SOURCE)))
+DOCKER_SECRET_FLAGS := -v $(SECRET_SOURCE):/run/secrets/github_token:ro -e GITHUB_TOKEN_FILE=/run/secrets/github_token
 else
 DOCKER_SECRET_FLAGS :=
+endif
+
+ifneq (,$(wildcard $(ENV_FILE)))
+DOCKER_ENV_FILE_ARG := --env-file $(ENV_FILE)
+else
+DOCKER_ENV_FILE_ARG :=
 endif
 
 help:
@@ -36,12 +51,12 @@ test:
 
 lint:
 	@echo "🔍 Running linter..."
-	$(UV) run ruff check src/ tests/
+	$(UV) run ruff check release_manager/ tests/
 
 format:
 	@echo "✨ Formatting code..."
-	$(UV) run ruff format src/ tests/
-	$(UV) run ruff check --fix src/ tests/
+	$(UV) run ruff format release_manager/ tests/
+	$(UV) run ruff check --fix release_manager/ tests/
 
 db-init:
 	@echo "📦 Initializing database..."
@@ -77,17 +92,20 @@ docker-build:
 
 docker-run:
 	@echo "🐳 Running Docker container..."
-	@if [ -f "$(GITHUB_TOKEN_SECRET)" ]; then \
-		SECRET_FLAGS="$(DOCKER_SECRET_FLAGS)"; \
-	else \
-		SECRET_FLAGS=""; \
+	@ENV_FILE_ARG=""; \
+	if [ -f "$(ENV_FILE)" ]; then \
+		ENV_FILE_ARG="--env-file $(ENV_FILE)"; \
 	fi; \
-	docker run -d \
+	SECRET_FLAGS=""; \
+	if [ -f "$(SECRET_SOURCE)" ]; then \
+		SECRET_FLAGS="$(DOCKER_SECRET_FLAGS)"; \
+	fi; \
+	docker run -d $$ENV_FILE_ARG \
 		-p 8080:8080 \
 		-v /var/run/docker.sock:/var/run/docker.sock:ro \
 		-v $$(pwd)/data:/data \
 		-e ENVIRONMENT_NAME=$(ENVIRONMENT_NAME) \
-		-e GITHUB_REPO=oscar-barlow/home.services \
+		-e GITHUB_REPO=$(GITHUB_REPO) \
 		-e DATABASE_PATH=/data/release-manager-$(ENVIRONMENT_NAME).db \
 		$$SECRET_FLAGS \
 		--name release-manager \
