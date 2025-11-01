@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Release Manager{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10" defer></script>
+    <script src="https://unpkg.com/alpinejs@3.13.3" defer></script>
+</head>
+<body>
+    <header class="app-header">
+        <h1>Release Manager</h1>
+        <nav x-data="{ active: 'dashboard' }">
+            <button 
+                :class="{ active: active === 'dashboard' }"
+                @click="active = 'dashboard'"
+                hx-get="/ui/dashboard"
+                hx-target="#content"
+                hx-push-url="true">
+                Dashboard
+            </button>
+            <button
+                :class="{ active: active === 'history' }"
+                @click="active = 'history'"
+                hx-get="/ui/history"
+                hx-target="#content"
+                hx-push-url="true">
+                History
+            </button>
+            <button
+                :class="{ active: active === 'health' }"
+                @click="active = 'health'"
+                hx-get="/ui/health"
+                hx-target="#content"
+                hx-push-url="true">
+                Health
+            </button>
+        </nav>
+    </header>
+    <main id="content">
+        {% block content %}{% endblock %}
+    </main>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

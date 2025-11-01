@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="loading-placeholder"
+     hx-get="/ui/dashboard"
+     hx-trigger="load"
+     hx-target="#content"
+     hx-swap="innerHTML">
+    <p>Loading dashboard…</p>
+</div>
+{% endblock %}

@@ -1,0 +1,76 @@
+<section class="history-section">
+    <header class="section-header">
+        <h2>Deployment History</h2>
+    </header>
+    {% if history %}
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Environment</th>
+                    <th>Service</th>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Started</th>
+                    <th>Completed</th>
+                    <th>By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in history %}
+                    <tr class="status-{{ entry.status }}">
+                        <td>{{ entry.id }}</td>
+                        <td>{{ entry.environment }}</td>
+                        <td>{{ entry.service_name }}</td>
+                        <td>{{ entry.version }}</td>
+                        <td>{{ entry.status }}</td>
+                        <td>{{ entry.started_at.strftime("%Y-%m-%d %H:%M:%S") }}</td>
+                        <td>
+                            {% if entry.completed_at %}
+                                {{ entry.completed_at.strftime("%Y-%m-%d %H:%M:%S") }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ entry.deployed_by }}</td>
+                    </tr>
+                    {% if entry.error_message %}
+                        <tr class="history-details">
+                            <td colspan="8">
+                                <div class="error-message">{{ entry.error_message }}</div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if total > limit %}
+            <div class="pagination">
+                {% set next_offset = offset + limit %}
+                {% if offset >= limit %}
+                    {% set prev_offset = offset - limit %}
+                    <button
+                        class="btn-secondary"
+                        hx-get="/ui/history?limit={{ limit }}&offset={{ prev_offset }}"
+                        hx-target="#content"
+                        hx-swap="innerHTML">
+                        Previous
+                    </button>
+                {% endif %}
+                {% if next_offset < total %}
+                    <button
+                        class="btn-secondary"
+                        hx-get="/ui/history?limit={{ limit }}&offset={{ next_offset }}"
+                        hx-target="#content"
+                        hx-swap="innerHTML">
+                        Next
+                    </button>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <p>No deployment history recorded yet.</p>
+        </div>
+    {% endif %}
+</section>

@@ -1,0 +1,43 @@
+<section class="health-section">
+    <header class="section-header">
+        <h2>Service Health</h2>
+    </header>
+    {% if health %}
+        {% for env, services in health.items() %}
+            <article class="environment-health">
+                <h3>{{ "Production" if env == "prod" else "Preprod" }}</h3>
+                {% if services %}
+                    <ul class="service-health-list">
+                        {% for name, entry in services.items() %}
+                            <li class="service-health {{ entry.status }}">
+                                <div class="health-summary">
+                                    <span class="status-dot"></span>
+                                    <span class="service-name">{{ name }}</span>
+                                    <span class="replicas">
+                                        {% if entry.replicas_running is not none %}
+                                            {{ entry.replicas_running }}/{{ entry.replicas_desired or "?" }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </span>
+                                    <span class="timestamp">
+                                        {{ entry.last_checked.strftime("%Y-%m-%d %H:%M:%S") }}
+                                    </span>
+                                </div>
+                                {% if entry.error_message %}
+                                    <div class="health-error">{{ entry.error_message }}</div>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="empty-state">No services tracked yet.</p>
+                {% endif %}
+            </article>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>No health information available.</p>
+        </div>
+    {% endif %}
+</section>

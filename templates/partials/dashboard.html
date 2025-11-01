@@ -1,0 +1,25 @@
+<section class="dashboard-grid">
+    <div id="environment-panels"
+         hx-get="/ui/environments"
+         hx-trigger="load, every 30s"
+         hx-swap="outerHTML">
+        {% include "partials/environments.html" %}
+    </div>
+
+    <div id="diff-panel"
+         hx-get="/ui/diff"
+         hx-trigger="load, every 30s"
+         hx-swap="outerHTML">
+        {% include "partials/diff.html" %}
+    </div>
+
+    <div id="history-panel"
+         class="history-preview"
+         hx-get="/ui/history?limit=10"
+         hx-trigger="load, every 60s"
+         hx-swap="outerHTML">
+        <div class="loading-placeholder">
+            <p>Loading history…</p>
+        </div>
+    </div>
+</section>

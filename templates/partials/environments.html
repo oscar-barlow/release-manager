@@ -1,0 +1,39 @@
+{% set env_order = ["prod", "preprod"] %}
+<section class="environments-grid">
+    {% if states %}
+        {% for env in env_order %}
+            {% set state = states.get(env) %}
+            {% if state %}
+                <article class="environment-card">
+                    <header>
+                        <h2>{{ "Production" if env == "prod" else "Preprod" }}</h2>
+                        <p class="meta">
+                            Commit {{ state.commit_sha[:8] if state.commit_sha else "unknown" }} •
+                            Deployed {{ state.deployed_at.strftime("%Y-%m-%d %H:%M:%S") }}
+                        </p>
+                    </header>
+                    <ul class="service-list">
+                        {% for service, version in state.services.items() %}
+                            {% set other = states.get("prod" if env == "preprod" else "preprod") %}
+                            {% set other_version = other.services.get(service) if other else None %}
+                            {% set newer = other_version and other_version != version and env == "preprod" %}
+                            {% set status = health.get(env, {}).get(service) %}
+                            <li class="service-row {{ status.status if status else 'unknown' }}">
+                                <span class="service-name">{{ service }}</span>
+                                <span class="service-version">{{ version }}</span>
+                                {% if newer %}
+                                    <span class="badge">NEWER</span>
+                                {% endif %}
+                                <span class="health-indicator {{ status.status if status else 'unknown' }}"></span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            {% endif %}
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>No environments deployed yet.</p>
+        </div>
+    {% endif %}
+</section>

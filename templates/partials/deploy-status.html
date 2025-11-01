@@ -1,0 +1,33 @@
+{% if status %}
+<div class="deployment-status deployment-{{ status.status }}">
+    <header>
+        <h3>Deployment {{ status.deployment_id }}</h3>
+        <p>Status: <strong>{{ status.status }}</strong></p>
+    </header>
+    <p>Started {{ status.started_at.strftime("%Y-%m-%d %H:%M:%S") }}</p>
+    {% if status.completed_at %}
+        <p>Completed {{ status.completed_at.strftime("%Y-%m-%d %H:%M:%S") }}</p>
+    {% endif %}
+    {% if status.error_message %}
+        <p class="error-message">{{ status.error_message }}</p>
+    {% endif %}
+    <h4>Services</h4>
+    <ul class="service-status-list">
+        {% for svc in status.services_deployed %}
+            <li>
+                <span class="service-name">{{ svc["name"] }}</span>
+                <span class="service-version">{{ svc["version"] }}</span>
+                {% if "health_status" in svc %}
+                    <span class="service-health {{ svc["health_status"] }}">{{ svc["health_status"] }}</span>
+                {% elif "status" in svc %}
+                    <span class="service-health {{ svc["status"] }}">{{ svc["status"] }}</span>
+                {% endif %}
+            </li>
+        {% endfor %}
+    </ul>
+</div>
+{% else %}
+<div class="empty-state">
+    <p>No deployment information available.</p>
+</div>
+{% endif %}

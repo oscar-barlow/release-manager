@@ -1,0 +1,264 @@
+:root {
+    color-scheme: dark;
+    font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+    background-color: #10141d;
+    color: #e4e8f0;
+}
+
+body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, rgba(27,38,59,0.8), rgba(10,14,22,0.95));
+}
+
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem 2rem;
+    background: rgba(12, 18, 30, 0.8);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(76, 110, 245, 0.2);
+}
+
+.app-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    letter-spacing: 0.05em;
+}
+
+nav button {
+    margin-left: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: rgba(54, 70, 120, 0.3);
+    color: inherit;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+nav button.active,
+nav button:hover {
+    border-color: rgba(76, 110, 245, 0.6);
+    background: rgba(76, 110, 245, 0.3);
+}
+
+#content {
+    padding: 2rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+}
+
+.environment-card,
+.diff-section,
+.history-section,
+.health-section,
+.deployment-status {
+    background: rgba(12, 18, 30, 0.7);
+    border: 1px solid rgba(76, 110, 245, 0.15);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25);
+}
+
+.environment-card h2 {
+    margin-top: 0;
+}
+
+.meta {
+    color: rgba(228, 232, 240, 0.7);
+    font-size: 0.85rem;
+}
+
+.service-list,
+.service-status-list,
+.service-health-list {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+}
+
+.service-row,
+.service-status-list li,
+.service-health-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(76, 110, 245, 0.12);
+}
+
+.service-row:last-child,
+.service-status-list li:last-child,
+.service-health-list li:last-child {
+    border-bottom: none;
+}
+
+.badge {
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(76, 110, 245, 0.25);
+    border: 1px solid rgba(76, 110, 245, 0.4);
+}
+
+.version-bump {
+    background: rgba(68, 214, 170, 0.2);
+    border-color: rgba(68, 214, 170, 0.4);
+}
+
+.new-service {
+    background: rgba(245, 178, 39, 0.2);
+    border-color: rgba(245, 178, 39, 0.4);
+}
+
+.removed-service {
+    background: rgba(245, 93, 111, 0.2);
+    border-color: rgba(245, 93, 111, 0.4);
+}
+
+.health-indicator {
+    display: inline-block;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    margin-left: 0.5rem;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.health-indicator.healthy {
+    background: #44d6aa;
+}
+
+.health-indicator.unhealthy {
+    background: #f55d6f;
+}
+
+.health-indicator.unknown {
+    background: #9aa3b1;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 1rem;
+    border-radius: 0.75rem;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: transform 0.15s ease;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #4c6ef5, #5f8cff);
+    color: white;
+}
+
+.btn-secondary {
+    background: rgba(76, 110, 245, 0.2);
+    color: white;
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #f55d6f, #ff7a8a);
+    color: white;
+}
+
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-danger:hover {
+    transform: translateY(-1px);
+}
+
+.loading-placeholder {
+    text-align: center;
+    padding: 2rem;
+    color: rgba(228, 232, 240, 0.6);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 1.5rem;
+    color: rgba(228, 232, 240, 0.6);
+}
+
+.diff-table,
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.diff-table th,
+.diff-table td,
+.history-table th,
+.history-table td {
+    text-align: left;
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(76, 110, 245, 0.12);
+}
+
+.deployment-status header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.health-section {
+    display: grid;
+    gap: 1rem;
+}
+
+.environment-health h3 {
+    margin-top: 0;
+}
+
+.health-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.status-dot {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    background: #9aa3b1;
+}
+
+.service-health.healthy .status-dot {
+    background: #44d6aa;
+}
+
+.service-health.unhealthy .status-dot {
+    background: #f55d6f;
+}
+
+.service-health.unknown .status-dot {
+    background: #9aa3b1;
+}
+
+.error-message,
+.health-error {
+    color: #ff7a8a;
+    margin-top: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.pagination {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
