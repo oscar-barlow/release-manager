@@ -1,12 +1,13 @@
 <section class="directory-view">
     {% if services %}
         {% for env, env_services in services|dictsort %}
-            <article class="directory-card">
+            <article class="directory-card ticket">
                 <header class="directory-card__header">
-                    <div>
-                        <h2>{{ env|capitalize }} Services</h2>
+                    <div class="directory-card__heading">
+                        <span class="ticket-route__label">Environment</span>
+                        <h2>{{ env|capitalize }} Service Directory</h2>
                         <p class="meta">
-                            {{ env_services|length }} running service{{ '' if env_services|length == 1 else 's' }}
+                            {{ env_services|length }} tracked service{{ '' if env_services|length == 1 else 's' }}
                         </p>
                     </div>
                     <div class="directory-card__status">

@@ -68,3 +68,46 @@ async def test_deploy_prod(tmp_path):
     prod_state = db.get_environment_state("prod")
     assert prod_state is not None
     assert prod_state.services["jellyfin"] == "2025040900"
+
+
+@pytest.mark.asyncio
+async def test_deploy_prod_subset_validation(tmp_path):
+    db = make_database(tmp_path)
+    docker = FakeDockerClient()
+    health = HealthService(db, docker)  # type: ignore[arg-type]
+    settings = Settings(
+        environment_name="test",
+        stub_mode=False,
+        github_repo="user/repo",
+        github_token_file=None,
+        github_token=None,
+        poll_interval_seconds=0,
+        docker_host=None,
+        database_path=tmp_path / "engine-test.db",
+        deployment_timeout_seconds=300,
+        health_check_interval_seconds=5,
+        web_host="0.0.0.0",
+        web_port=8080,
+    )
+    engine = DeploymentEngine(
+        database=db,
+        docker_client=docker,  # type: ignore[arg-type]
+        health_service=health,
+        settings=settings,
+    )
+
+    with pytest.raises(ValueError):
+        await engine.deploy_prod(
+            services={"api": "1.0.0"},
+            commit_sha="sha",
+            subset=["unknown"],
+        )
+
+    result = await engine.deploy_prod(
+        services={"api": "1.0.0", "worker": "1.0.0"},
+        commit_sha="sha",
+        subset=["worker"],
+    )
+
+    assert docker.deploy_calls == [("prod", {"worker": "1.0.0"})]
+    assert result.services_deployed[0]["name"] == "worker"

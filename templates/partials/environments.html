@@ -3,28 +3,55 @@
     {% if states %}
         {% for env in env_order %}
             {% set state = states.get(env) %}
+            {% set env_name = "Production" if env == "prod" else "Preprod" %}
+            {% set env_code = "PRD" if env == "prod" else "PRP" %}
             {% if state %}
-                <article class="environment-card">
-                    <header>
-                        <h2>{{ "Production" if env == "prod" else "Preprod" }}</h2>
-                        <p class="meta">
-                            Commit {{ state.commit_sha[:8] if state.commit_sha else "unknown" }} •
-                            Deployed {{ state.deployed_at.strftime("%Y-%m-%d %H:%M:%S") }}
-                        </p>
+                <article class="environment-card ticket">
+                    <header class="ticket-header">
+                        <div class="ticket-route">
+                            <span class="ticket-route__label">Environment</span>
+                            <span class="ticket-route__code">{{ env_code }}</span>
+                            <span class="ticket-route__divider">•</span>
+                            <span class="ticket-route__name">{{ env_name }}</span>
+                        </div>
+                        <dl class="ticket-meta">
+                            <div>
+                                <dt>Commit</dt>
+                                <dd>{{ state.commit_sha[:8] if state.commit_sha else "unknown" }}</dd>
+                            </div>
+                            <div>
+                                <dt>Last Sync</dt>
+                                <dd>{{ state.deployed_at.strftime("%Y-%m-%d %H:%M:%S") }}</dd>
+                            </div>
+                        </dl>
                     </header>
-                    <ul class="service-list">
+                    <div class="ticket-divider"></div>
+                    <ul class="service-list manifest">
+                        <li class="manifest-header">
+                            <span>Service</span>
+                            <span>Version</span>
+                            <span>Status</span>
+                        </li>
                         {% for service, version in state.services.items() %}
                             {% set other = states.get("prod" if env == "preprod" else "preprod") %}
                             {% set other_version = other.services.get(service) if other else None %}
                             {% set newer = other_version and other_version != version and env == "preprod" %}
                             {% set status = health.get(env, {}).get(service) %}
-                            <li class="service-row {{ status.status if status else 'unknown' }}">
-                                <span class="service-name">{{ service }}</span>
-                                <span class="service-version">{{ version }}</span>
+                            <li class="service-row manifest-row {{ status.status if status else 'unknown' }}">
+                                <span class="service-name">
+                                    <span class="service-code">{{ service[:3].upper() }}</span>
+                                    {{ service }}
+                                </span>
+                                <span class="service-version">
+                                    <span class="version-code">{{ version }}</span>
+                                </span>
                                 {% if newer %}
-                                    <span class="badge">NEWER</span>
+                                    <span class="badge badge--update">Awaiting Prod Sync</span>
                                 {% endif %}
-                                <span class="health-indicator {{ status.status if status else 'unknown' }}"></span>
+                                <span class="manifest-status">
+                                    <span class="health-indicator {{ status.status if status else 'unknown' }}"></span>
+                                    {{ status.status if status else "unknown" }}
+                                </span>
                             </li>
                         {% endfor %}
                     </ul>

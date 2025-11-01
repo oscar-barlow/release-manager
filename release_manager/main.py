@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from .config import Settings, get_settings
 from .database import Database
@@ -72,3 +73,4 @@ app = FastAPI(title="Release Manager", lifespan=lifespan)
 app.include_router(api.router)
 app.include_router(ui.router)
 app.include_router(pages.router)
+app.mount("/static", StaticFiles(directory="static"), name="static")

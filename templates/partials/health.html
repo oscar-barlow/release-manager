@@ -4,7 +4,7 @@
     </header>
     {% if health %}
         {% for env, services in health.items() %}
-            <article class="environment-health">
+            <article class="environment-health ticket">
                 <h3>{{ "Production" if env == "prod" else "Preprod" }}</h3>
                 {% if services %}
                     <ul class="service-health-list">
