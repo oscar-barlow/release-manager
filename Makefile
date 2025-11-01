@@ -9,10 +9,10 @@ endif
 
 UV_CACHE_DIR ?= ./.uv-cache
 UV := UV_CACHE_DIR=$(UV_CACHE_DIR) uv
-ENVIRONMENT_NAME ?= dev
+ENV_NAME ?= dev
 GITHUB_REPO ?= oscar-barlow/home.services
 DATABASE_DIR := data
-DATABASE_FILE := $(DATABASE_DIR)/release-manager-$(ENVIRONMENT_NAME).db
+DATABASE_FILE := $(DATABASE_DIR)/release-manager-$(ENV_NAME).db
 
 SECRET_SOURCE := $(if $(GITHUB_TOKEN_FILE),$(abspath $(GITHUB_TOKEN_FILE)),$(CURDIR)/.secrets/github_token)
 
@@ -66,7 +66,7 @@ db-init:
 		exit 1; \
 	fi
 	@mkdir -p $(DATABASE_DIR)
-	ENVIRONMENT_NAME=$(ENVIRONMENT_NAME) DATABASE_PATH=$(DATABASE_FILE) $(UV) run python -m release_manager.migrations upgrade
+	ENV_NAME=$(ENV_NAME) DATABASE_PATH=$(DATABASE_FILE) $(UV) run python -m release_manager.migrations upgrade
 	@echo "✅ Database initialized at $(DATABASE_FILE)"
 
 db-reset:
@@ -75,7 +75,7 @@ db-reset:
 	if [ "$$confirm" = "y" ]; then \
 		rm -f $(DATABASE_FILE); \
 		mkdir -p $(DATABASE_DIR); \
-		ENVIRONMENT_NAME=$(ENVIRONMENT_NAME) DATABASE_PATH=$(DATABASE_FILE) $(UV) run python -m release_manager.migrations upgrade; \
+		ENV_NAME=$(ENV_NAME) DATABASE_PATH=$(DATABASE_FILE) $(UV) run python -m release_manager.migrations upgrade; \
 		echo "✅ Database reset complete"; \
 	else \
 		echo "Cancelled"; \
@@ -83,7 +83,7 @@ db-reset:
 
 db-upgrade:
 	@echo "⬆️  Applying database migrations..."
-	ENVIRONMENT_NAME=$(ENVIRONMENT_NAME) DATABASE_PATH=$(DATABASE_FILE) $(UV) run python -m release_manager.migrations upgrade $(if $(REVISION),--revision $(REVISION),)
+	ENV_NAME=$(ENV_NAME) DATABASE_PATH=$(DATABASE_FILE) $(UV) run python -m release_manager.migrations upgrade $(if $(REVISION),--revision $(REVISION),)
 	@echo "✅ Database migrated"
 
 docker-build:
@@ -104,9 +104,9 @@ docker-run:
 		-p 8080:8080 \
 		-v /var/run/docker.sock:/var/run/docker.sock:ro \
 		-v $$(pwd)/data:/data \
-		-e ENVIRONMENT_NAME=$(ENVIRONMENT_NAME) \
+		-e ENV_NAME=$(ENV_NAME) \
 		-e GITHUB_REPO=$(GITHUB_REPO) \
-		-e DATABASE_PATH=/data/release-manager-$(ENVIRONMENT_NAME).db \
+		-e DATABASE_PATH=/data/release-manager-$(ENV_NAME).db \
 		$$SECRET_FLAGS \
 		--name release-manager \
 		release-manager:latest

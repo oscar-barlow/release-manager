@@ -46,7 +46,7 @@ class Settings:
         else:
             load_dotenv(override=False)
 
-        environment_name = _determine_environment_name(os.environ.get("ENVIRONMENT_NAME", "preprod"))
+        environment_name = _determine_environment_name(os.environ.get("ENV_NAME", "preprod"))
         stub_mode = _to_bool(os.environ.get("STUB_MODE", "false"))
         github_repo = os.environ.get("GITHUB_REPO", "oscar-barlow/home.services")
         if not github_repo:

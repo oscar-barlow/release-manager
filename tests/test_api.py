@@ -10,7 +10,7 @@ def client(tmp_path, monkeypatch):
     monkeypatch.setenv("GITHUB_REPO", "user/homelab")
     monkeypatch.setenv("DATABASE_PATH", str(db_path))
     monkeypatch.setenv("POLL_INTERVAL_SECONDS", "0")
-    monkeypatch.setenv("ENVIRONMENT_NAME", "test")
+    monkeypatch.setenv("ENV_NAME", "test")
     monkeypatch.setenv("STUB_MODE", "true")
     config.get_settings.cache_clear()
     from release_manager.main import app
