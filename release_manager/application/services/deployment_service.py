@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Iterable, Optional, Sequence
+from typing import Iterable, Literal, Optional, Sequence, cast
 
 from release_manager.application.ports import (
     Clock,
@@ -52,6 +52,7 @@ class DeploymentService:
         self._logger = logger
         self._lock = asyncio.Lock()
         self._active_environment: Optional[str] = None
+        self._last_health_probe: list[ServiceHealth] = []
 
     def is_deployment_in_progress(self) -> bool:
         return self._active_environment is not None
@@ -134,7 +135,7 @@ class DeploymentService:
         )
 
         error_message: Optional[str] = None
-        self._last_health_probe: list[ServiceHealth] = []
+        self._last_health_probe = []
         status: DeploymentStatusType = "success"
         try:
             await asyncio.to_thread(
@@ -176,9 +177,10 @@ class DeploymentService:
             environment=environment,
         )
 
+        env_literal = cast(Literal["prod", "preprod"], environment)
         return DeploymentStatus(
             deployment_id=history_records[0].history_id if history_records else -1,
-            environment=environment,  # type: ignore[arg-type]
+            environment=env_literal,
             status=status,
             started_at=started_at,
             completed_at=completed_at,
@@ -332,9 +334,10 @@ class DeploymentService:
         duration_seconds = (
             (completed_at - record.started_at).total_seconds() if completed_at else None
         )
+        env_literal = cast(Literal["prod", "preprod"], record.environment)
         return DeploymentStatus(
             deployment_id=deployment_id,
-            environment=record.environment,  # type: ignore[arg-type]
+            environment=env_literal,
             status=status,
             started_at=record.started_at,
             completed_at=completed_at,

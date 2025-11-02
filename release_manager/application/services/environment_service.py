@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Optional
 
 from release_manager.application.ports import EnvironmentStateRepository
-from release_manager.models import EnvironmentState, ServiceDiff
+from release_manager.models import ChangeType, EnvironmentState, ServiceDiff
 
 
 class EnvironmentService:
@@ -40,7 +40,9 @@ class EnvironmentService:
             prod_version = prod_services.get(service)
             preprod_version = preprod_services.get(service)
             if prod_version and preprod_version:
-                change_type = "no_change" if prod_version == preprod_version else "version_bump"
+                change_type: ChangeType = (
+                    "no_change" if prod_version == preprod_version else "version_bump"
+                )
             elif preprod_version and not prod_version:
                 change_type = "new_service"
             else:

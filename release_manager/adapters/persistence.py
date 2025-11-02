@@ -12,7 +12,12 @@ from release_manager.application.ports import (
     ServiceHealthRepository,
 )
 from release_manager.database import Database
-from release_manager.models import DeploymentHistory, EnvironmentState, ServiceHealth
+from release_manager.models import (
+    DeploymentHistory,
+    DeploymentStatusType,
+    EnvironmentState,
+    ServiceHealth,
+)
 
 
 @dataclass(slots=True)
@@ -77,7 +82,7 @@ class DatabaseDeploymentHistoryRepository(DeploymentHistoryRepository):
         self,
         history_id: int,
         *,
-        status: str,
+        status: DeploymentStatusType,
         completed_at: datetime,
         duration_seconds: float,
         error_message: Optional[str] = None,
