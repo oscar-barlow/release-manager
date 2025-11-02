@@ -10,7 +10,7 @@ on:
 
 jobs:
   test:
-    name: Run Tests
+    name: Run Tests (${{ github.event_name }})
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -28,7 +28,7 @@ jobs:
         run: uv run pytest
 
   type-check:
-    name: Type Check
+    name: Type Check (${{ github.event_name }})
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -46,7 +46,7 @@ jobs:
         run: uv run mypy
 
   build:
-    name: Build Container
+    name: Build Container (${{ github.event_name }})
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -59,7 +59,7 @@ jobs:
         run: docker build -t release-manager:ci .
 
   publish:
-    name: Publish Container Tag
+    name: Publish Container Tag (${{ github.event_name }})
     runs-on: ubuntu-latest
     needs:
       - test
