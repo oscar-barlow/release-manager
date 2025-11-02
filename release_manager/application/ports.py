@@ -3,10 +3,15 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Iterable, Optional, Protocol, Tuple
+from typing import Any, Iterable, Optional, Protocol, Tuple
 
 from release_manager.github import GitHubEnvFile
-from release_manager.models import DeploymentHistory, EnvironmentState, ServiceHealth
+from release_manager.models import (
+    DeploymentHistory,
+    DeploymentStatusType,
+    EnvironmentState,
+    ServiceHealth,
+)
 
 
 class Clock(Protocol):
@@ -19,16 +24,16 @@ class Clock(Protocol):
 class Logger(Protocol):
     """Light-weight logging port."""
 
-    def info(self, msg: str, *args: object, **kwargs: object) -> None:
+    def info(self, msg: Any, *args: Any, **kwargs: Any) -> None:
         ...
 
-    def warning(self, msg: str, *args: object, **kwargs: object) -> None:
+    def warning(self, msg: Any, *args: Any, **kwargs: Any) -> None:
         ...
 
-    def debug(self, msg: str, *args: object, **kwargs: object) -> None:
+    def debug(self, msg: Any, *args: Any, **kwargs: Any) -> None:
         ...
 
-    def error(self, msg: str, *args: object, **kwargs: object) -> None:
+    def error(self, msg: Any, *args: Any, **kwargs: Any) -> None:
         ...
 
 
@@ -73,7 +78,7 @@ class DeploymentHistoryRepository(Protocol):
         self,
         history_id: int,
         *,
-        status: str,
+        status: DeploymentStatusType,
         completed_at: datetime,
         duration_seconds: float,
         error_message: Optional[str] = None,
